@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  2fa:
+    image: xiaosaaaa/2fa_generator:latest
+    container_name: 2fa
+    ports:
+      - "12281:12281"
+    env_file:
+      - .env
+    restart: unless-stopped
+

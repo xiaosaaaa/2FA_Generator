@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2FA Code Generator</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .code {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .countdown {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        #qr_code_container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        footer a {
+            text-decoration: none;
+            color: #007bff;
+        }
+    </style>
+    <script>
+        let remainingTime = {{ remaining_time }};
+        let codes = {
+            code1: "{{ code1 }}" !== "None" ? "{{ code1 }}" : null,
+            code2: "{{ code2 }}" !== "None" ? "{{ code2 }}" : null,
+            code3: "{{ code3 }}" !== "None" ? "{{ code3 }}" : null,
+            code4: "{{ code4 }}" !== "None" ? "{{ code4 }}" : null,
+        };
+
+        function isValidSecret(secret) {
+            return secret && secret.length >= 16;
+        }
+
+        function updateCodes() {
+            fetch('/get_codes')
+                .then(response => response.json())
+                .then(data => {
+                    Object.keys(codes).forEach((key) => {
+                        if (data[key]) {
+                            document.getElementById(key).innerText = data[key];
+                            document.getElementById(key + '-container').style.display = 'block';
+                        } else {
+                            document.getElementById(key + '-container').style.display = 'none';
+                        }
+                    });
+
+                    if (Object.values(data).some(code => code)) {
+                        document.getElementById('countdown-container').style.display = 'block';
+                    } else {
+                        document.getElementById('countdown-container').style.display = 'none';
+                    }
+
+                    remainingTime = 30;
+                });
+        }
+
+        function startCountdown() {
+            setInterval(() => {
+                if (remainingTime <= 0) {
+                    updateCodes();
+                } else {
+                    remainingTime--;
+                }
+                document.getElementById('countdown').innerText = remainingTime;
+            }, 1000);
+        }
+
+        function generateNewCode(event) {
+            event.preventDefault();
+            const newSecret = document.getElementById('new_secret').value;
+            if (!isValidSecret(newSecret)) {
+                alert("密钥不符合规定，请重新输入。");
+                return;
+            }
+            fetch('/generate_code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `new_secret=${newSecret}`
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Invalid secret");
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('new_code').innerText = data.new_code;
+                document.getElementById('qr_code').src = `data:image/png;base64,${data.qr_code}`;
+                document.getElementById('qr_code_container').style.display = 'block';
+            })
+            .catch(error => {
+                alert("密钥不符合规定，请重新输入。");
+            });
+        }
+
+        window.onload = startCountdown;
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">2FA Code Generator</h1>
+        <div class="mt-4">
+            <div id="code1-container" style="display: {{ 'block' if code1 else 'none' }};">
+                <p>李白的2FA验证码: <span class="code" id="code1">{{ code1 }}</span></p>
+            </div>
+            <div id="code2-container" style="display: {{ 'block' if code2 else 'none' }};">
+                <p>杜甫的2FA验证码: <span class="code" id="code2">{{ code2 }}</span></p>
+            </div>
+            <div id="code3-container" style="display: {{ 'block' if code3 else 'none' }};">
+                <p>苏轼的2FA验证码: <span class="code" id="code3">{{ code3 }}</span></p>
+            </div>
+            <div id="code4-container" style="display: {{ 'block' if code4 else 'none' }};">
+                <p>潇洒的2FA验证码: <span class="code" id="code4">{{ code4 }}</span></p>
+            </div>
+            <div id="countdown-container" style="display: {{ 'block' if show_countdown else 'none' }};">
+                <p>验证码将在 <span class="countdown" id="countdown">{{ remaining_time }}</span> 秒后刷新。</p>
+            </div>
+        </div>
+        <hr id="separator" style="display: {{ 'block' if show_countdown else 'none' }};">
+        <h2>生成新密钥的验证码</h2>
+        <form onsubmit="generateNewCode(event)" class="mt-3">
+            <div class="form-group">
+                <label for="new_secret">输入新密钥:</label>
+                <input type="text" class="form-control" id="new_secret" name="new_secret" required>
+            </div>
+            <button type="submit" class="btn btn-primary">生成验证码</button>
+        </form>
+        <p class="mt-3">生成的验证码: <span class="code" id="new_code"></span></p>
+        <div id="qr_code_container" style="display: none;">
+            <img id="qr_code" src="" alt="QR Code">
+            <p>扫描二维码以添加到Google Authenticator</p>
+        </div>
+        <footer>
+            Powered by <a href="https://github.com/xiaosaaaa/2FA_Generator" target="_blank">xiaosaaaa</a>
+        </footer>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
+
