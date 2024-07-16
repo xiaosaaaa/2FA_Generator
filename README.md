@@ -1,5 +1,7 @@
 # 2FA_Generator
 The project is used to generate 2FA code
+![image](https://github.com/user-attachments/assets/95121328-fc89-4ba3-bde7-ae94b6840200)
+
 ## 1. Introdcue
 1. This project only supports TOTP(Time-based One-time Password)
 2. If you enter the seed in the .env file, it will show the verification codes on the web and refresh them automatically, and the project currently supports a maximum of four seeds simultaneously.
